@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Energy Consumption Project</title>
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.3/css/bootstrap.min.css" integrity="sha384-Zug+QiDoJOrZ5t4lssLdxGhVrurbmBWopoEl+M6BdEfwnCJZtKxi1KgxUyJq13dy"
+        crossorigin="anonymous">
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.3/js/bootstrap.min.js" integrity="sha384-a5N7Y/aK3qNeh15eJKGWxsqtnX/wWdSZSKp+81YjTmS15nvnvxKHuzaWwXHDli+4"
+        crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="app.css">
+</head>
+
+<body>
+    <!-- https://stackoverflow.com/a/44801382 -->
+    <div class="container h-100">
+        <section>
+            <div class="row h-100 justify-content-center align-items-center">
+                <form>
+                    <div class="form-group">
+                        <label for="start-date">Start Date</label>
+                        <input class="flatpickr form-control" placeholder="Select Date..." readonly="readonly" type="text" id="datepicker-start">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="end-date">End Date</label>
+                        <input class="flatpickr form-control" placeholder="Select Date..." readonly="readonly" type="text" id="datepicker-end">
+                    </div>
+
+                    <div class="form-check form-check-inline">
+                        <label for="radio-day" class="form-check-label">
+                            <input type="radio" name="grouping" id="radio-day" value="day" checked class="form-check-input"> Day
+                        </label>
+                    </div>
+
+                    <div class="form-check form-check-inline">
+                        <label for="radio-week" class="form-check-label">
+                            <input type="radio" name="grouping" id="radio-week" value="week" class="form-check-input"> Week
+                        </label>
+                    </div>
+
+                    <div class="form-check form-check-inline">
+                        <label for="radio-month" class="form-check-label">
+                            <input type="radio" name="grouping" id="radio-month" value="month" class="form-check-input"> Month
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="kwh-price">Price per kWh</label>
+                        <input type="text" name="kwhprice" id="kwh-price" class="form-control">
+                    </div>
+
+                    <div>
+                        <button type="button" class="btn btn-primary btn-block" id="submit-btn">Submit</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <section>
+            <div id="consumption-results" class="row">
+        </section>
+        </div>
+
+        <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
+            crossorigin="anonymous"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+            crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+        <script src="https://cdn.jsdelivr.net/npm/moment@2.20.1/moment.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.0.10/handlebars.min.js"></script>
+
+        <script id="consumption-result-template" type="text/x-handlebars-template">
+        <table class="table table-sm table-striped">
+                <thead>
+                    <tr>
+                        <th>Period</th>
+                        <th>Amount (kWh)</th>
+                        <th>Price (€)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#each this}}
+                    <tr class="consumption-table-row">
+                        <td class="consumption-table-row__period">{{period}}</td>
+                        <td class="consumption-table-row__amount">{{amount}}</td>
+                        <td class="consumption-table-row__price"></td>
+                    </tr>
+                    {{/each}}
+                </tbody>
+            </table>
+    </script>
+        <script>
+            var options = {
+                dateFormat: "d.m.Y",
+                defaultDate: moment().toISOString()
+            }
+
+            var startDatepicker = flatpickr("#datepicker-start", options);
+            startDatepicker.set('minDate', moment().subtract(2, 'years').toISOString());
+            startDatepicker.set('maxDate', moment().toISOString());
+
+            var endDatepicker = flatpickr("#datepicker-end", options);
+            endDatepicker.set('maxDate', moment().toISOString());
+        </script>
+
+        <script>
+
+            $("#submit-btn").click(function () {
+
+                var startDateSplit = $("#datepicker-start").val().split(".");
+                var startDate =  startDateSplit[1] + "." + startDateSplit[0] + "." + startDateSplit[2]; 
+                
+                var endDateSplit = $("#datepicker-end").val().split(".");
+                var endDate = endDateSplit[1] + "." + endDateSplit[0] + "." + endDateSplit[2]; 
+
+
+                var groupingType = $("input[name='grouping']:checked").val();
+
+                $.ajax({
+                    method: "GET",
+                    url: "http://localhost:3672/api/test?" + "startDate=" + startDate + "&endDate=" + endDate + "&grouping=" + groupingType
+                })
+                    .done(function (response) {
+                       
+                        var source = $("#consumption-result-template").html();
+                        var template = Handlebars.compile(source);
+
+                        var table_html = template(response);
+                        $("#consumption-results").html(table_html);
+
+                    })
+                    .fail(function (jqXHR, textStatus) {
+                        alert("fail");
+                    });
+            });
+        </script>
+</body>
+
+</html>
